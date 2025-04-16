@@ -31,4 +31,4 @@ app.post('/aulas', (req, res) => {
 })
 
 app.listen(PORT, () => {console.log('servidor online')})//coloca o servidor para ouvir na porta e colocar mensagem
-//depois disso instalar o npm i nodemon e ir no package.json e adicionar virgula depois de text e embaixo de test o "start": "nodemon index.js"
+//depois disso instalar o npm i nodemon e ir  no package.json e adicionar virgula depois de text e embaixo de test o "start": "nodemon index.js"
