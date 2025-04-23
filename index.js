@@ -1,57 +1,83 @@
-const express = require('express')// importar modulo express do npm
+require('dotenv').config();
+const express = require('express');
+const fs = require('fs').promises;
+const app = express();
+const PORT = process.env.PORT || 8000;
+const DATA_FILE = 'bancoDeDados.json';
 
-const app = express()// inicializar o servidor express e salvar variavel app
-const PORT = 8000 // separa uma porta para rodar o servidor
-app.use(express.json())//fala para o servidor que vai receber dados em JSON
+app.use(express.json());
 
-const bancodeDados = [
-    {
-        id:1,
-        titulo:"desenvolvimento de sistemas",
-        curso: "tecnico em desenvolvimento de sistemas",
-        turma: "3B",
-        professor:"Ramon"
+async function loadData() {
+    try {
+        const txt = await fs.readFile(DATA_FILE, 'utf-8');
+        return JSON.parse(txt);
+    } catch {
+        return [];
     }
-]
-//criar as minhas rotas
-app.get('/aulas', (req,res) => {
-    res.status(200).send(bancodeDados)
-})
+}
 
-app.get('/aulas/:id', (req,res)=>{
-    console.log(req.params.id)
-    res.send('qualquercoisa')
-})
+async function saveData(dados) {
+    await fs.writeFile(DATA_FILE, JSON.stringify(dados, null, 2));
+}
 
-app.post('/aulas', (req, res) => {
-    const dados = req.body
-    dados['id'] = bancodeDados.length + 1
-    bancodeDados.push(dados)
-    res.status(201).send(dados)
-})
-
-app.put('/aulas/:id', (req,res)=>{
-    const id = req.params.id;
-    const usuario = bancodeDados.find(user => user.id == id);
-    if (!usuario){
-        return res.status(404).json({msg:"Usuario não encontrado"});
-    }
-    Object.assign(usuario, req.body);
-    res.status(200).json(usuario);
+app.get('/aulas', async (req, res, next) => {
+    try {
+        const aulas = await loadData();
+        res.json(aulas);
+    } catch (e) { next(e) }
 });
 
-
-app.delete('/aulas/:id', (req, res) => {
-    const id = req.params.id;
-    const index = bancodeDados.findIndex(user => user.id == id);
-
-    if (index === -1) {
-        return res.status(404).json({msg: "Usuario não encontrado"});
-    }
-
-    bancodeDados.splice(index, 1);
-    res.status(200).json({msg: "Usuario deletado com sucesso"});
+app.get('/aulas/:id', async (req, res, next) => {
+    try {
+        const id = Number(req.params.id);
+        const aulas = await loadData();
+        const aula = aulas.find(a => a.id === id);
+        if (!aula) return res.status(404).json({ msg: 'Aula não encontrada' });
+        res.json(aula);
+    } catch (e) { next(e) }
 });
 
-app.listen(PORT, () => {console.log('servidor online')})//coloca o servidor para ouvir na porta e colocar mensagem
-//depois disso instalar o npm i nodemon e ir  no package.json e adicionar virgula depois de text e embaixo de test o "start": "nodemon index.js"
+app.post('/aulas', async (req, res, next) => {
+    try {
+        const { titulo, curso, turma, professor } = req.body;
+        if (!titulo || !curso) {
+            return res.status(400).json({ msg: 'Título e curso são obrigatórios' });
+        }
+        const aulas = await loadData();
+        const nova = { id: aulas.length + 1, titulo, curso, turma, professor };
+        aulas.push(nova);
+        await saveData(aulas);
+        res.status(201).json(nova);
+    } catch (e) { next(e) }
+});
+
+app.put('/aulas/:id', async (req, res, next) => {
+    try {
+        const id = Number(req.params.id);
+        const aulas = await loadData();
+        const idx = aulas.findIndex(a => a.id === id);
+        if (idx === -1) return res.status(404).json({ msg: 'Aula não encontrada' });
+        aulas[idx] = { ...aulas[idx], ...req.body };
+        await saveData(aulas);
+        res.json(aulas[idx]);
+    } catch (e) { next(e) }
+});
+
+app.delete('/aulas/:id', async (req, res, next) => {
+    try {
+        const id = Number(req.params.id);
+        const aulas = await loadData();
+        const idx = aulas.findIndex(a => a.id === id);
+        if (idx === -1) return res.status(404).json({ msg: 'Aula não encontrada' });
+        aulas.splice(idx, 1);
+        await saveData(aulas);
+        res.json({ msg: 'Aula deletada com sucesso' });
+    } catch (e) { next(e) }
+});
+
+app.use((err, req, res, next) => {
+    console.error(err);
+    res.status(500).json({ msg: 'Erro interno no servidor' });
+});
+
+app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
