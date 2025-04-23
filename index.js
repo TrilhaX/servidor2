@@ -30,5 +30,28 @@ app.post('/aulas', (req, res) => {
     res.status(201).send(dados)
 })
 
+app.put('/aulas/:id', (req,res)=>{
+    const id = req.params.id;
+    const usuario = bancodeDados.find(user => user.id == id);
+    if (!usuario){
+        return res.status(404).json({msg:"Usuario não encontrado"});
+    }
+    Object.assign(usuario, req.body);
+    res.status(200).json(usuario);
+});
+
+
+app.delete('/aulas/:id', (req, res) => {
+    const id = req.params.id;
+    const index = bancodeDados.findIndex(user => user.id == id);
+
+    if (index === -1) {
+        return res.status(404).json({msg: "Usuario não encontrado"});
+    }
+
+    bancodeDados.splice(index, 1);
+    res.status(200).json({msg: "Usuario deletado com sucesso"});
+});
+
 app.listen(PORT, () => {console.log('servidor online')})//coloca o servidor para ouvir na porta e colocar mensagem
 //depois disso instalar o npm i nodemon e ir  no package.json e adicionar virgula depois de text e embaixo de test o "start": "nodemon index.js"
