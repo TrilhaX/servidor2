@@ -43,7 +43,7 @@ app.post('/aulas', (req, res) => {
         const aulas = JSON.parse(data)
         dados['id'] = aulas.length + 1
         aulas.push(dados)
-        fs.writeFile('bancoDeDados.json', aulas, (err) => {
+        fs.writeFile('bancoDeDados.json', JSON.stringify(aulas), (err) => {
             if (err) {
                 return res.status(500).send('Erro ao escrever no arquivo');
             }
