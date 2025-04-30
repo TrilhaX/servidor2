@@ -6,75 +6,91 @@ app.use(express.json())//fala para o servidor que vai receber dados em JSON
 
 const bancodeDados = [
     {
-        id:1,
-        titulo:"desenvolvimento de sistemas",
+        id: 1,
+        titulo: "desenvolvimento de sistemas",
         curso: "tecnico em desenvolvimento de sistemas",
         turma: "3B",
-        professor:"Ramon"
+        professor: "Ramon"
     }
 ]
+
+function writeFile(arg1, arg2, res, arg3) {
+    fs.writeFile(arg1, JSON.stringify(arg2, null, 2), err => {
+        if (err) return res.status(500).send('Erro ao salvar');
+        if (arg3 !== undefined) {
+            return res.status(200).send(arg3);
+        }
+        res.status(200).send('Salvo com sucesso');
+    });
+}
+
+function readFile(path, encoding, type, req, res) {
+    fs.readFile(path, encoding, (err, data) => {
+        if (err) return res.status(500).send('Erro ao ler o arquivo');
+
+        let aulas;
+        try {
+            aulas = JSON.parse(data);
+            if (!Array.isArray(aulas)) {
+                console.warn(`"${path}" não continha um array — resetando para [].`);
+                aulas = [];
+            }
+        } catch (parseErr) {
+            console.error('Falha ao fazer parse do JSON:', parseErr);
+            aulas = [];
+        }
+
+        const id = req.params.id;
+        const dados = req.body;
+
+        if (type === "get") {
+            const aula = aulas.find(a => a.id == id);
+            return aula
+                ? res.status(200).send(aula)
+                : res.status(404).send('Aula não encontrada');
+        }
+        else if (type === "post") {
+            dados.id = aulas.length + 1;
+            aulas.push(dados);
+            return writeFile(path, aulas, res);
+        }
+        else if (type === "put") {
+            const idx = aulas.findIndex(a => a.id == id);
+            if (idx === -1) return res.status(404).send('Aula não encontrada');
+            aulas[idx] = { ...aulas[idx], ...dados };
+            return writeFile(path, aulas, res, aulas[idx]);
+        }
+        else if (type === "delete") {
+            const idx = aulas.findIndex(a => a.id == id);
+            if (idx === -1) return res.status(404).send('Aula não encontrada');
+            const [removed] = aulas.splice(idx, 1);
+            return writeFile(path, aulas, res, removed);
+        }
+
+        res.status(400).send('Requisição mal formatada');
+    });
+}
+
 //criar as minhas rotas
-app.get('/aulas', (req,res) => {
+app.get('/aulas', (req, res) => {
     res.status(200).send(bancodeDados)
 })
 
-app.get('/aulas/:id', (req,res)=>{
-    const id = req.params.id
-    fs.readFile('bancoDeDados.json', 'utf-8', (err, data) =>{
-        if (err) {
-            return res.status(500).send('Erro ao ler o arquivo');
-        }
-        const aulas = JSON.parse(data)
-        const aula = usuarios.find(aula => aula.id == id)
-        if (aula) {
-            return res.status(200).send(aula);
-        } else {
-            return res.status(404).send('Usuário não encontrado');
-        }
-    })
+app.get('/aulas/:id', (req, res) => {
+    readFile('bancoDeDados.json', 'utf-8', 'get', req, res)
 })
 
 app.post('/aulas', (req, res) => {
-    const dados = req.body
-    fs.readFile('bancoDeDados.json', 'utf-8', (err, data) => {
-        if(err){
-            return res.status(500).send('Erro ao ler o arquivo');
-        }
-        const aulas = JSON.parse(data)
-        dados['id'] = aulas.length + 1
-        aulas.push(dados)
-        fs.writeFile('bancoDeDados.json', JSON.stringify(aulas), (err) => {
-            if (err) {
-                return res.status(500).send('Erro ao escrever no arquivo');
-            }
-        })
-        console.log(aulas)
-    })
-    res.status(201).send(dados)
+    readFile('bancoDeDados.json', 'utf-8', 'post', req, res)
 })
 
-app.put('/aulas/:id', (req,res)=>{
-    const id = req.params.id;
-    const usuario = bancodeDados.find(user => user.id == id);
-    if (!usuario){
-        return res.status(404).json({msg:"Usuario não encontrado"});
-    }
-    Object.assign(usuario, req.body);
-    res.status(200).json(usuario);
+app.put('/aulas/:id', (req, res) => {
+    readFile('bancoDeDados.json', 'utf-8', 'put', req, res)
 });
-
 
 app.delete('/aulas/:id', (req, res) => {
-    const id = req.params.id;
-    const index = bancodeDados.findIndex(user => user.id == id);
-
-    if (index === -1) {
-        return res.status(404).json({msg: "Usuario não encontrado"});
-    }
-
-    bancodeDados.splice(index, 1);
-    res.status(200).json({msg: "Usuario deletado com sucesso"});
+    readFile('bancoDeDados.json', 'utf-8', 'delete', req, res)
 });
 
-app.listen(PORT, () => {console.log('servidor online')})//coloca o servidor para ouvir na porta e colocar mensagem
+app.listen(PORT, () => { console.log('servidor online') })//coloca o servidor para ouvir na porta e colocar mensagem
 //depois disso instalar o npm i nodemon e ir  no package.json e adicionar virgula depois de text e embaixo de test o "start": "nodemon index.js"
