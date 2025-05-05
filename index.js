@@ -6,7 +6,7 @@ app.use(express.json())//fala para o servidor que vai receber dados em JSON
 
 const bancodeDados = [
     {
-        id: 1,
+        id: date.now(),
         titulo: "desenvolvimento de sistemas",
         curso: "tecnico em desenvolvimento de sistemas",
         turma: "3B",
